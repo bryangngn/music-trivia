@@ -27,17 +27,21 @@
         .control-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
         /* Estilos de Botones */
-        #play-btn { background-color: #5555ff; } /* Azul principal */
+        #play-btn { background-color: #5555ff; } 
         #play-btn:hover:not(:disabled) { background-color: #7777ff; }
 
-        #reveal-btn { background-color: #ff9800; } /* Naranja para Pista */
+        #reveal-btn { background-color: #ff9800; } 
         #reveal-btn:hover:not(:disabled) { background-color: #ffb74d; }
         
-        #next-btn { background-color: #4CAF50; } /* Verde para avance */
+        #next-btn { background-color: #4CAF50; } 
         #next-btn:hover:not(:disabled) { background-color: #66BB6A; }
         
-        #start-game-btn { background-color: #00bcd4; } /* Cian para Inicio */
+        #start-game-btn { background-color: #00bcd4; } 
         #start-game-btn:hover:not(:disabled) { background-color: #4dd0e1; }
+        
+        /* Nuevo Botón de Inicio */
+        #enable-btn { background-color: #8d8dd9; font-size: 1.5em; padding: 20px; }
+        #enable-btn:hover { background-color: #a4a4e9; }
 
         /* Estilos de Selección de Playlist */
         #playlist-options { 
@@ -78,8 +82,14 @@
 
 <div class="container">
     <h1>🎧 Trivia Musical</h1>
+
+    <div id="initial-tap-screen">
+        <h2 class="subtitle">¡Bienvenido!</h2>
+        <p>Toca el botón para cargar el juego y habilitar la reproducción de audio en tu móvil.</p>
+        <button id="enable-btn" class="control-btn" onclick="enableAudioAndStart()">▶️ ¡Toca para Comenzar!</button>
+    </div>
     
-    <div id="selection-area">
+    <div id="selection-area" class="hidden">
         <h2 class="subtitle">Elige una Playlist para empezar:</h2>
         
         <div id="playlist-options">
@@ -114,7 +124,7 @@
         'chillOut': { id: '908622995', name: '☕ Música Chill & Relax' }
     };
     
-    const PREVIEW_DURATION = 8000; // 8 segundos
+    const PREVIEW_DURATION = 8000; 
     const CORS_PROXY = "https://corsproxy.io/?"; 
     
     let allTracks = [];
@@ -123,6 +133,7 @@
     let timeoutId = null; 
 
     // Referencias a elementos
+    const initialTapScreen = document.getElementById('initial-tap-screen');
     const selectionArea = document.getElementById('selection-area');
     const gameArea = document.getElementById('game-area');
     const playlistOptionsContainer = document.getElementById('playlist-options');
@@ -135,6 +146,26 @@
     const nextBtn = document.getElementById('next-btn');
     const revealBtn = document.getElementById('reveal-btn');
     const playlistInfo = document.getElementById('playlist-info');
+
+
+    // NUEVA FUNCIÓN DE PERMISO DE AUDIO
+    function enableAudioAndStart() {
+        // Intenta reproducir y pausar un audio vacío para obtener permiso del navegador.
+        audioPlayer.src = ''; 
+        audioPlayer.play()
+            .then(() => {
+                audioPlayer.pause();
+                initialTapScreen.classList.add('hidden');
+                selectionArea.classList.remove('hidden');
+                renderPlaylistSelection();
+            })
+            .catch(e => {
+                console.warn("Audio permission failed, proceeding anyway. Mobile policy error:", e);
+                initialTapScreen.classList.add('hidden');
+                selectionArea.classList.remove('hidden');
+                renderPlaylistSelection();
+            });
+    }
 
 
     // 1. DIBUJAR LA PANTALLA DE SELECCIÓN
@@ -161,6 +192,9 @@
         
         startGameBtn.addEventListener('click', selectPlaylistAndStart);
         startGameBtn.disabled = true;
+
+        // Conectamos el botón de reproducción
+        playBtn.addEventListener('click', () => playAudio(currentTrack.preview));
     }
 
     // 2. CARGAR TRACKS DE LA PLAYLIST ELEGIDA (Con manejo de errores de API)
@@ -239,7 +273,6 @@
     function playAudio(url) {
         if (!currentTrack) return;
         
-        // Pausar y limpiar cualquier reproducción anterior
         audioPlayer.pause();
         if (timeoutId) clearTimeout(timeoutId);
         
@@ -250,12 +283,8 @@
         playBtn.disabled = true; 
         playIcon.innerText = "⏳ Cargando audio...";
         
-        // --- Mejoras de Reproducción ---
-        
-        // Forzamos la recarga del nuevo origen
         audioPlayer.load();
 
-        // Esperamos al evento 'canplaythrough' (suficientes datos cargados para la reproducción)
         audioPlayer.addEventListener('canplaythrough', function handler() {
             
             playIcon.innerText = "🔊 Reproduciendo...";
@@ -266,26 +295,22 @@
                 playBtn.disabled = false; 
             });
 
-            // Detener después de PREVIEW_DURATION
             timeoutId = setTimeout(() => {
                 audioPlayer.pause();
                 playIcon.innerText = "🔁 Volver a Escuchar";
                 playBtn.disabled = false; 
             }, PREVIEW_DURATION); 
 
-            // Limpiamos este listener para que no se ejecute en la siguiente ronda
             audioPlayer.removeEventListener('canplaythrough', handler);
         }, { once: true }); 
         
-        
-        // Listener de finalización de audio (por si el usuario pausa antes del timeout)
         audioPlayer.onended = () => {
             if (timeoutId) clearTimeout(timeoutId);
             playIcon.innerText = "🔁 Volver a Escuchar";
             playBtn.disabled = false;
         };
     }
-    
+
     function revealAnswer() {
         audioPlayer.pause();
         if (timeoutId) clearTimeout(timeoutId);
@@ -297,8 +322,8 @@
         nextBtn.classList.remove('hidden');
     }
 
-    // Arrancar la aplicación dibujando la selección
-    renderPlaylistSelection();
+    // Al iniciar, solo mostramos la pantalla de permiso de audio.
+    // El resto se llama desde enableAudioAndStart().
 
 </script>
 </body>
