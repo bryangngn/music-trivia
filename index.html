@@ -85,7 +85,7 @@
 
     <div id="initial-tap-screen">
         <h2 class="subtitle">¡Bienvenido!</h2>
-        <p>Toca el botón para cargar el juego y habilitar la reproducción de audio en tu móvil.</p>
+        <p>Toca el botón para cargar el juego.</p>
         <button id="enable-btn" class="control-btn" onclick="enableAudioAndStart()">▶️ ¡Toca para Comenzar!</button>
     </div>
     
@@ -200,7 +200,7 @@
     // 2. CARGAR TRACKS DE LA PLAYLIST ELEGIDA (Con manejo de errores de API)
     async function loadTracks(playlistId) {
         statusText.innerText = "Cargando canciones...";
-        const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=10000`;
+        const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=5000`;
         
         try {
             const response = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
