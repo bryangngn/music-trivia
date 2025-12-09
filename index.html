@@ -199,7 +199,7 @@
     // 2. CARGAR TRACKS DE LA PLAYLIST ELEGIDA (Con manejo de errores de API)
     async function loadTracks(playlistId) {
         statusText.innerText = "Cargando canciones...";
-        const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=5000`;
+        const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=100`;
         
         try {
             const response = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
