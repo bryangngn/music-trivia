@@ -91,7 +91,7 @@
     </div>
     
     <div id="selection-area" class="hidden">
-        <h2 class="subtitle">Elige una de estas Playlist para empezar:</h2>
+        <h2 class="subtitle">Elige una Playlist para empezar:</h2>
         
         <div id="playlist-options">
             </div>
@@ -126,6 +126,8 @@
     };
     
     const PREVIEW_DURATION = 8000; 
+    const MAX_TRACKS_TO_FETCH = 100; // Queremos 100 canciones
+    
     // Proxy más estable para audio
     const CORS_PROXY = "https://corsproxy.io/?"; 
     
@@ -137,7 +139,7 @@
     let selectedPlaylistID = null;
     let timeoutId = null; 
 
-    // Referencias a elementos
+    // Referencias a elementos... (Mantenidas)
     const initialTapScreen = document.getElementById('initial-tap-screen');
     const selectionArea = document.getElementById('selection-area');
     const gameArea = document.getElementById('game-area');
@@ -179,7 +181,6 @@
 
     // 1. DIBUJAR LA PANTALLA DE SELECCIÓN
     function renderPlaylistSelection() {
-        // Renderizado de opciones de playlist... (mantenido igual)
         let html = '';
         for (const key in PLAYLISTS) {
             const playlist = PLAYLISTS[key];
@@ -203,7 +204,6 @@
         startGameBtn.addEventListener('click', selectPlaylistAndStart);
         startGameBtn.disabled = true;
 
-        // Listener añadido aquí para evitar duplicados.
         playBtn.addEventListener('click', () => {
             if (currentTrack && currentTrack.preview) {
                 playAudio(currentTrack.preview);
@@ -211,25 +211,54 @@
         });
     }
 
-    // 2. CARGAR TRACKS Y BARJAR LA LISTA (Llamada solo una vez)
+    // 2. FUNCIÓN CLAVE: CARGA ALEATORIA EN DOS PASOS
     async function loadTracks(playlistId) {
-        statusText.innerText = "Cargando canciones...";
-        // Límite fijado en 100 para estabilidad y evitar Timeouts (408)
-        const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=100`; 
+        statusText.innerText = "Paso 1/2: Obteniendo el total de canciones...";
+        
+        // --- PASO 1: Obtener el número total de canciones (total) ---
+        let totalApiUrl = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=1`;
         
         try {
-            const response = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
-            const data = await response.json();
+            let response = await fetch(CORS_PROXY + encodeURIComponent(totalApiUrl));
+            let data = await response.json();
             
-            // --- Manejo de Error de API ---
-            if (!data || !data.data || data.error) {
-                let errorMsg = (data && data.error && data.error.message) ? `Error de Deezer: ${data.error.message}.` : "Error: ID de playlist incorrecto o privada.";
+            if (!data || data.error || typeof data.total !== 'number') {
+                 let errorMsg = (data && data.error && data.error.message) ? `Error de Deezer: ${data.error.message}.` : "Error: ID de playlist incorrecto o privada.";
                 statusText.innerText = errorMsg + " Selecciona otra playlist.";
                 selectionArea.classList.remove('hidden');
                 gameArea.classList.add('hidden');
                 return;
             }
+
+            const totalSongsInPlaylist = data.total;
             
+            if (totalSongsInPlaylist === 0) {
+                 statusText.innerText = "Error: La playlist no tiene canciones.";
+                 selectionArea.classList.remove('hidden');
+                 gameArea.classList.add('hidden');
+                 return;
+            }
+
+            // --- Cálculo del índice de inicio aleatorio ---
+            const maxStart = Math.max(0, totalSongsInPlaylist - MAX_TRACKS_TO_FETCH);
+            const randomStartIndex = Math.floor(Math.random() * maxStart);
+            
+            
+            // --- PASO 2: Obtener la muestra de 100 canciones a partir del índice aleatorio ---
+            statusText.innerText = `Paso 2/2: Obteniendo 100 canciones aleatorias a partir del índice ${randomStartIndex}...`;
+            
+            const randomSampleApiUrl = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=${MAX_TRACKS_TO_FETCH}&index=${randomStartIndex}`;
+            
+            response = await fetch(CORS_PROXY + encodeURIComponent(randomSampleApiUrl));
+            data = await response.json();
+            
+            if (!data || !data.data || data.error) {
+                statusText.innerText = "Error al obtener la muestra aleatoria de canciones.";
+                selectionArea.classList.remove('hidden');
+                gameArea.classList.add('hidden');
+                return;
+            }
+
             allTracks = data.data.filter(track => track.preview);
             
             // --- Barajar la lista por primera vez ---
