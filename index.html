@@ -91,7 +91,7 @@
     </div>
     
     <div id="selection-area" class="hidden">
-        <h2 class="subtitle">Elige una Playlist para empezar:</h2>
+        <h2 class="subtitle">Elige una de estas Playlist para empezar:</h2>
         
         <div id="playlist-options">
             </div>
@@ -126,11 +126,11 @@
     };
     
     const PREVIEW_DURATION = 8000; 
-    // Usamos corsproxy.io por ser el más estable para audio
+    // Proxy más estable para audio
     const CORS_PROXY = "https://corsproxy.io/?"; 
     
-    let allTracks = [];      // Lista original de todas las canciones cargadas
-    let shuffledTracks = []; // Lista de canciones a reproducir (barajada)
+    let allTracks = [];      
+    let shuffledTracks = []; 
     let totalTracksCount = 0;
     let currentRound = 0;
     let currentTrack = null;
@@ -164,26 +164,22 @@
     }
 
 
-    // NUEVA FUNCIÓN DE PERMISO DE AUDIO
+    // NUEVA FUNCIÓN DE PERMISO DE AUDIO PARA MÓVILES
     function enableAudioAndStart() {
         audioPlayer.src = ''; 
         audioPlayer.play()
-            .then(() => {
-                audioPlayer.pause();
-                initialTapScreen.classList.add('hidden');
-                selectionArea.classList.remove('hidden');
-                renderPlaylistSelection();
-            })
-            .catch(e => {
-                initialTapScreen.classList.add('hidden');
-                selectionArea.classList.remove('hidden');
-                renderPlaylistSelection();
-            });
+            .then(() => audioPlayer.pause())
+            .catch(e => console.warn("Audio permission failed, proceeding anyway. Error:", e));
+
+        initialTapScreen.classList.add('hidden');
+        selectionArea.classList.remove('hidden');
+        renderPlaylistSelection();
     }
 
 
     // 1. DIBUJAR LA PANTALLA DE SELECCIÓN
     function renderPlaylistSelection() {
+        // Renderizado de opciones de playlist... (mantenido igual)
         let html = '';
         for (const key in PLAYLISTS) {
             const playlist = PLAYLISTS[key];
@@ -207,27 +203,36 @@
         startGameBtn.addEventListener('click', selectPlaylistAndStart);
         startGameBtn.disabled = true;
 
-        playBtn.addEventListener('click', () => playAudio(currentTrack.preview));
+        // Listener añadido aquí para evitar duplicados.
+        playBtn.addEventListener('click', () => {
+            if (currentTrack && currentTrack.preview) {
+                playAudio(currentTrack.preview);
+            }
+        });
     }
 
-    // 2. CARGAR TRACKS Y BARJAR LA LISTA
+    // 2. CARGAR TRACKS Y BARJAR LA LISTA (Llamada solo una vez)
     async function loadTracks(playlistId) {
         statusText.innerText = "Cargando canciones...";
-        // Mantenemos el límite en 100 para evitar Timeouts (408)
+        // Límite fijado en 100 para estabilidad y evitar Timeouts (408)
         const API_URL = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=100`; 
         
         try {
             const response = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
             const data = await response.json();
             
+            // --- Manejo de Error de API ---
             if (!data || !data.data || data.error) {
-                // ... (Manejo de errores de API omitido por brevedad, pero mantenido en tu código)
+                let errorMsg = (data && data.error && data.error.message) ? `Error de Deezer: ${data.error.message}.` : "Error: ID de playlist incorrecto o privada.";
+                statusText.innerText = errorMsg + " Selecciona otra playlist.";
+                selectionArea.classList.remove('hidden');
+                gameArea.classList.add('hidden');
                 return;
             }
             
             allTracks = data.data.filter(track => track.preview);
             
-            // --- CAMBIO CLAVE: Barajar y configurar las rondas ---
+            // --- Barajar la lista por primera vez ---
             shuffledTracks = shuffleArray([...allTracks]); // Crea una copia y la baraja
             totalTracksCount = shuffledTracks.length;
             currentRound = 0;
@@ -238,7 +243,7 @@
             selectionArea.classList.add('hidden');
             gameArea.classList.remove('hidden');
             
-            startGame();
+            startGame(); // Inicia el primer juego con la lista barajada
 
         } catch (error) {
             console.error("Error al cargar tracks:", error);
@@ -248,23 +253,21 @@
         }
     }
     
+    // 3. FUNCIÓN QUE SE EJECUTA AL CLIC EN "COMENZAR JUEGO"
     function selectPlaylistAndStart() {
         if (selectedPlaylistID) {
+            startGameBtn.disabled = true; 
             loadTracks(selectedPlaylistID);
         }
     }
     
-    // 4. LÓGICA DEL JUEGO (Toma la siguiente canción de la lista barajada)
+    // 4. LÓGICA DEL JUEGO (Toma la siguiente canción ÚNICA)
     function startGame() {
         if (timeoutId) clearTimeout(timeoutId);
         audioPlayer.pause();
 
-        // ----------------------------------------------------
-        // --- Lógica de Fin de Juego / Siguiente Canción ---
-        // ----------------------------------------------------
-
         if (shuffledTracks.length === 0) {
-            // No quedan canciones en la lista
+            // Fin del juego.
             statusText.innerText = `¡Juego Terminado! Has adivinado las ${totalTracksCount} canciones.`;
             playBtn.disabled = true;
             nextBtn.classList.add('hidden');
@@ -273,8 +276,8 @@
             return;
         }
 
-        // Toma y elimina la PRIMERA canción de la lista barajada
-        currentTrack = shuffledTracks.shift(); // .shift() garantiza que no se repite
+        // TOMA la primera canción del array barajado y la ELIMINA.
+        currentTrack = shuffledTracks.shift(); 
         currentRound++;
         
         // --- Configuración de Ronda ---
