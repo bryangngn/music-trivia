@@ -125,7 +125,7 @@ l<!DOCTYPE html>
         'rockClassics': { id: '14676026441', name: '🤘 Pop-Rock classics' }
     };
     
-    const PREVIEW_DURATION = 8000; 
+    const PREVIEW_DURATION = 5000; 
     const MAX_TRACKS_TO_FETCH = 100; // Queremos 100 canciones
     
     // Proxy más estable para audio
@@ -369,7 +369,7 @@ l<!DOCTYPE html>
         playBtn.disabled = true;
         revealBtn.disabled = true;
 
-        statusText.innerHTML = `La respuesta era:<br/> **${currentTrack.title}** de **${currentTrack.artist.name}**`;
+        statusText.innerHTML = `La respuesta es:<br/> ${currentTrack.title} de ${currentTrack.artist.name}`;
         nextBtn.classList.remove('hidden');
     }
 
