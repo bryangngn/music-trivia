@@ -1,4 +1,4 @@
-l<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -85,13 +85,13 @@ l<!DOCTYPE html>
     <h1>🎧 Trivia Musical</h1>
 
     <div id="initial-tap-screen">
-        <h2 class="subtitle">¡Bienvenido!</h2>
+        <h2 class="subtitle">¡Bienvenid@!</h2>
         <p>Toca el botón para cargar el juego y habilitar la reproducción de audio en tu móvil.</p>
         <button id="enable-btn" class="control-btn" onclick="enableAudioAndStart()">▶️ ¡Toca para Comenzar!</button>
     </div>
     
     <div id="selection-area" class="hidden">
-        <h2 class="subtitle">Elige una de estas Playlist para empezar:</h2>
+        <h2 class="subtitle">Elige una Playlist para empezar:</h2>
         
         <div id="playlist-options">
             </div>
@@ -119,14 +119,17 @@ l<!DOCTYPE html>
 </div>
 
 <script>
-    // --- CONFIGURACIÓN DE PLAYLISTS ---
+    // --- CONFIGURACIÓN DE PLAYLISTS ACTUALIZADA ---
     const PLAYLISTS = {
         'spain': { id: '14654349041', name: '🎵 Éxitos en español' },
         'rockClassics': { id: '14676026441', name: '🤘 Pop-Rock classics' }
     };
     
+    // DURACIÓN DEL FRAGMENTO DE AUDIO (5 segundos)
     const PREVIEW_DURATION = 5000; 
-    const MAX_TRACKS_TO_FETCH = 100; // Queremos 100 canciones
+    
+    // Pedimos la muestra máxima (250) para maximizar la probabilidad de encontrar artistas únicos
+    const MAX_TRACKS_TO_FETCH = 250; 
     
     // Proxy más estable para audio
     const CORS_PROXY = "https://corsproxy.io/?"; 
@@ -139,7 +142,7 @@ l<!DOCTYPE html>
     let selectedPlaylistID = null;
     let timeoutId = null; 
 
-    // Referencias a elementos... (Mantenidas)
+    // Referencias a elementos
     const initialTapScreen = document.getElementById('initial-tap-screen');
     const selectionArea = document.getElementById('selection-area');
     const gameArea = document.getElementById('game-area');
@@ -163,6 +166,26 @@ l<!DOCTYPE html>
             [array[i], array[j]] = [array[j], array[i]];
         }
         return array;
+    }
+    
+    // 0.b FUNCIÓN CLAVE: FILTRA LA LISTA PARA ASEGURAR ARTISTAS ÚNICOS
+    function filterUniqueArtists(tracks) {
+        const uniqueArtists = new Set();
+        const filteredTracks = [];
+
+        // Barajamos la muestra antes de filtrar para que el filtro sea aleatorio
+        const shuffledSample = shuffleArray(tracks); 
+
+        for (const track of shuffledSample) {
+            const artistId = track.artist.id; 
+            
+            // Si el artista no ha sido añadido AÚN y tiene preview
+            if (!uniqueArtists.has(artistId) && track.preview) {
+                uniqueArtists.add(artistId);
+                filteredTracks.push(track);
+            }
+        }
+        return filteredTracks;
     }
 
 
@@ -211,9 +234,9 @@ l<!DOCTYPE html>
         });
     }
 
-    // 2. FUNCIÓN CLAVE: CARGA ALEATORIA EN DOS PASOS
+    // 2. FUNCIÓN CLAVE: CARGA ALEATORIA EN DOS PASOS Y FILTRADO
     async function loadTracks(playlistId) {
-        statusText.innerText = "Paso 1/2: Obteniendo el total de canciones...";
+        statusText.innerText = "Paso 1/3: Obteniendo el total de canciones...";
         
         // --- PASO 1: Obtener el número total de canciones (total) ---
         let totalApiUrl = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=1`;
@@ -240,12 +263,13 @@ l<!DOCTYPE html>
             }
 
             // --- Cálculo del índice de inicio aleatorio ---
+            // Usamos MAX_TRACKS_TO_FETCH (250) en el cálculo.
             const maxStart = Math.max(0, totalSongsInPlaylist - MAX_TRACKS_TO_FETCH);
             const randomStartIndex = Math.floor(Math.random() * maxStart);
             
             
-            // --- PASO 2: Obtener la muestra de 100 canciones a partir del índice aleatorio ---
-            statusText.innerText = `Paso 2/2: Obteniendo 100 canciones aleatorias a partir del índice ${randomStartIndex}...`;
+            // --- PASO 2: Obtener la muestra de 250 canciones a partir del índice aleatorio ---
+            statusText.innerText = `Paso 2/3: Obteniendo ${MAX_TRACKS_TO_FETCH} canciones aleatorias a partir del índice ${randomStartIndex}...`;
             
             const randomSampleApiUrl = `https://api.deezer.com/playlist/${playlistId}/tracks?limit=${MAX_TRACKS_TO_FETCH}&index=${randomStartIndex}`;
             
@@ -259,24 +283,34 @@ l<!DOCTYPE html>
                 return;
             }
 
-            allTracks = data.data.filter(track => track.preview);
+            // --- PASO 3: Filtrar la muestra para artistas únicos ---
+            statusText.innerText = "Paso 3/3: Filtrando para asegurar artistas únicos...";
             
-            // --- Barajar la lista por primera vez ---
-            shuffledTracks = shuffleArray([...allTracks]); // Crea una copia y la baraja
-            totalTracksCount = shuffledTracks.length;
+            const uniqueTracksByArtist = filterUniqueArtists(data.data);
+            
+            if (uniqueTracksByArtist.length === 0) {
+                 statusText.innerText = "Error: La muestra aleatoria no produjo canciones válidas o únicas por artista.";
+                 selectionArea.classList.remove('hidden');
+                 gameArea.classList.add('hidden');
+                 return;
+            }
+            
+            // --- Configurar el juego ---
+            shuffledTracks = uniqueTracksByArtist; 
+            totalTracksCount = shuffledTracks.length; 
             currentRound = 0;
 
             const selectedName = Object.values(PLAYLISTS).find(p => p.id === playlistId).name;
-            playlistInfo.innerText = `Jugando con: ${selectedName} (${totalTracksCount} canciones)`;
+            playlistInfo.innerText = `Jugando con: ${selectedName} (${totalTracksCount} canciones de artistas únicos)`;
             
             selectionArea.classList.add('hidden');
             gameArea.classList.remove('hidden');
             
-            startGame(); // Inicia el primer juego con la lista barajada
+            startGame(); 
 
         } catch (error) {
             console.error("Error al cargar tracks:", error);
-            statusText.innerText = "Error de conexión o del proxy CORS.";
+            statusText.innerText = "Error de conexión o del proxy CORS. Intenta nuevamente.";
             selectionArea.classList.remove('hidden');
             gameArea.classList.add('hidden');
         }
@@ -346,6 +380,7 @@ l<!DOCTYPE html>
                 playBtn.disabled = false; 
             });
 
+            // DURACIÓN DEL FRAGMENTO DE AUDIO (5 segundos)
             timeoutId = setTimeout(() => {
                 audioPlayer.pause();
                 playIcon.innerText = "🔁 Volver a Escuchar";
@@ -369,7 +404,7 @@ l<!DOCTYPE html>
         playBtn.disabled = true;
         revealBtn.disabled = true;
 
-        statusText.innerHTML = `La respuesta es:<br/> ${currentTrack.title} de ${currentTrack.artist.name}`;
+        statusText.innerHTML = `La respuesta era:<br/> **${currentTrack.title}** de **${currentTrack.artist.name}**`;
         nextBtn.classList.remove('hidden');
     }
 
