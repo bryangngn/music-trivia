@@ -85,7 +85,7 @@
     <h1>🎧 Trivia Musical</h1>
 
     <div id="initial-tap-screen">
-        <h2 class="subtitle">¡Bienvenid@!</h2>
+        <h2 class="subtitle">¡Bienvenido!</h2>
         <p>Toca el botón para cargar el juego y habilitar la reproducción de audio en tu móvil.</p>
         <button id="enable-btn" class="control-btn" onclick="enableAudioAndStart()">▶️ ¡Toca para Comenzar!</button>
     </div>
@@ -263,7 +263,6 @@
             }
 
             // --- Cálculo del índice de inicio aleatorio ---
-            // Usamos MAX_TRACKS_TO_FETCH (250) en el cálculo.
             const maxStart = Math.max(0, totalSongsInPlaylist - MAX_TRACKS_TO_FETCH);
             const randomStartIndex = Math.floor(Math.random() * maxStart);
             
@@ -397,6 +396,7 @@
         };
     }
 
+    // FUNCIÓN DE REVELACIÓN ACTUALIZADA SIN ASTERISCOS
     function revealAnswer() {
         audioPlayer.pause();
         if (timeoutId) clearTimeout(timeoutId);
@@ -404,7 +404,9 @@
         playBtn.disabled = true;
         revealBtn.disabled = true;
 
-        statusText.innerHTML = `La respuesta era:<br/> **${currentTrack.title}** de **${currentTrack.artist.name}**`;
+        // --- CAMBIO APLICADO AQUÍ ---
+        statusText.innerHTML = `La respuesta era:<br/> ${currentTrack.title} de ${currentTrack.artist.name}`;
+        
         nextBtn.classList.remove('hidden');
     }
 
