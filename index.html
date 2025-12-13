@@ -122,7 +122,8 @@
     // --- CONFIGURACIÓN DE PLAYLISTS ACTUALIZADA ---
     const PLAYLISTS = {
         'spain': { id: '14654349041', name: '🎵 Éxitos en español' },
-        'rockClassics': { id: '14676026441', name: '🤘 Pop-Rock classics' }
+        'rockClassics': { id: '14676026441', name: '🤘 Pop-Rock classics' },
+        'bso': { id: '14695166981', name: '🎞 BSO' }
     };
     
     // DURACIÓN DEL FRAGMENTO DE AUDIO (5 segundos)
@@ -209,7 +210,7 @@
             const playlist = PLAYLISTS[key];
             html += `
                 <div class="playlist-option">
-                    <input type="radio" id="${key}" name="playlist" value="${playlist.id}">
+                    <input type="radio" id="${key}" name="playlist" value="${playlist.id}" data-key="${key}">
                     <label for="${key}">${playlist.name}</label>
                 </div>
             `;
@@ -233,9 +234,21 @@
             }
         });
     }
+    
+    // 3. FUNCIÓN QUE SE EJECUTA AL CLIC EN "COMENZAR JUEGO"
+    function selectPlaylistAndStart() {
+        // Necesitamos la clave ('spain', 'rockClassics', 'bso') para el filtrado condicional
+        const selectedRadio = document.querySelector('input[name="playlist"]:checked');
+        if (selectedRadio) {
+            const playlistKey = selectedRadio.dataset.key;
+            startGameBtn.disabled = true; 
+            loadTracks(selectedPlaylistID, playlistKey);
+        }
+    }
 
-    // 2. FUNCIÓN CLAVE: CARGA ALEATORIA EN DOS PASOS Y FILTRADO
-    async function loadTracks(playlistId) {
+
+    // 2. FUNCIÓN CLAVE: CARGA ALEATORIA EN DOS PASOS Y FILTRADO CONDICIONAL
+    async function loadTracks(playlistId, playlistKey) {
         statusText.innerText = "Paso 1/3: Obteniendo el total de canciones...";
         
         // --- PASO 1: Obtener el número total de canciones (total) ---
@@ -282,12 +295,19 @@
                 return;
             }
 
-            // --- PASO 3: Filtrar la muestra para artistas únicos ---
-            statusText.innerText = "Paso 3/3: Filtrando para asegurar artistas únicos...";
+            // --- PASO 3: Filtrar la muestra (CONDICIONALMENTE) ---
+            let tracksToPlay = data.data;
+
+            if (playlistKey !== 'bso') {
+                statusText.innerText = "Paso 3/3: Filtrando para asegurar artistas únicos...";
+                tracksToPlay = filterUniqueArtists(data.data);
+            } else {
+                // Si es BSO, solo barajamos la muestra aleatoria de 250 (y quitamos las sin preview)
+                tracksToPlay = shuffleArray(data.data.filter(track => track.preview));
+                statusText.innerText = "Paso 3/3: BSO detectada. Usando todas las canciones de la muestra.";
+            }
             
-            const uniqueTracksByArtist = filterUniqueArtists(data.data);
-            
-            if (uniqueTracksByArtist.length === 0) {
+            if (tracksToPlay.length === 0) {
                  statusText.innerText = "Error: La muestra aleatoria no produjo canciones válidas o únicas por artista.";
                  selectionArea.classList.remove('hidden');
                  gameArea.classList.add('hidden');
@@ -295,12 +315,12 @@
             }
             
             // --- Configurar el juego ---
-            shuffledTracks = uniqueTracksByArtist; 
+            shuffledTracks = tracksToPlay; 
             totalTracksCount = shuffledTracks.length; 
             currentRound = 0;
 
             const selectedName = Object.values(PLAYLISTS).find(p => p.id === playlistId).name;
-            playlistInfo.innerText = `Jugando con: ${selectedName} (${totalTracksCount} canciones de artistas únicos)`;
+            playlistInfo.innerText = `Jugando con: ${selectedName} (${totalTracksCount} canciones)`;
             
             selectionArea.classList.add('hidden');
             gameArea.classList.remove('hidden');
@@ -312,14 +332,6 @@
             statusText.innerText = "Error de conexión o del proxy CORS. Intenta nuevamente.";
             selectionArea.classList.remove('hidden');
             gameArea.classList.add('hidden');
-        }
-    }
-    
-    // 3. FUNCIÓN QUE SE EJECUTA AL CLIC EN "COMENZAR JUEGO"
-    function selectPlaylistAndStart() {
-        if (selectedPlaylistID) {
-            startGameBtn.disabled = true; 
-            loadTracks(selectedPlaylistID);
         }
     }
     
@@ -404,7 +416,6 @@
         playBtn.disabled = true;
         revealBtn.disabled = true;
 
-        // --- CAMBIO APLICADO AQUÍ ---
         statusText.innerHTML = `La respuesta era:<br/> ${currentTrack.title} de ${currentTrack.artist.name}`;
         
         nextBtn.classList.remove('hidden');
