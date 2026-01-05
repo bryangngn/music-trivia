@@ -82,7 +82,7 @@
 <body>
 
 <div class="container">
-    <h1>🎧 Trivia Musical</h1>
+    <h1>🎧 Trivial Musical</h1>
 
     <div id="initial-tap-screen">
         <h2 class="subtitle">¡Bienvenido!</h2>
@@ -122,15 +122,15 @@
     // --- CONFIGURACIÓN DE PLAYLISTS ACTUALIZADA ---
     const PLAYLISTS = {
         'spain': { id: '14654349041', name: '🎵 Éxitos en español' },
-        'rockClassics': { id: '14676026441', name: '🤘 Pop-Rock classics' },
+        'rockClassics': { id: '14676026441', name: '🤘 Música internacional' },
         'bso': { id: '14695166981', name: '🎞 BSO' }
     };
     
     // DURACIÓN DEL FRAGMENTO DE AUDIO (5 segundos)
     const PREVIEW_DURATION = 5000; 
     
-    // Pedimos la muestra máxima (250) para maximizar la probabilidad de encontrar artistas únicos
-    const MAX_TRACKS_TO_FETCH = 250; 
+    // Pedimos la muestra máxima (50) para maximizar la probabilidad de encontrar artistas únicos
+    const MAX_TRACKS_TO_FETCH = 50; 
     
     // Proxy más estable para audio
     const CORS_PROXY = "https://corsproxy.io/?"; 
